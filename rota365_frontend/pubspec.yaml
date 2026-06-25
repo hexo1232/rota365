@@ -1,0 +1,33 @@
+name: rota365_frontend
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Gestão de estado
+  provider: ^6.1.2
+
+  # Chamadas HTTP para o backend Spring Boot
+  http: ^1.2.2
+
+  # Package local partilhado
+  api_compartilhado:
+    path: ../api_compartilhado
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
