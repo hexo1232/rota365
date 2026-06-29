@@ -26,5 +26,5 @@ public record UsuarioRequestDTO(
          * Por isso, deixamos opcional no DTO.
          * Se quiseres obrigar perfil na regra de negócio, validamos no service.
          */
-        Long idPerfil
+        Integer idPerfil
 ) {}

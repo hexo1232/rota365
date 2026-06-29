@@ -15,7 +15,7 @@ public class Perfil {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_perfil")
-    private Long idPerfil;
+   private Integer idPerfil;
 
     @Column(name = "nome_perfil", nullable = false, length = 50)
     private String nomePerfil;

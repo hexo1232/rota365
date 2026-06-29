@@ -35,7 +35,7 @@ public class UsuarioController {
 
     @GetMapping("/api/usuarios/{idUsuario}")
     public ResponseEntity<UsuarioResponseDTO> buscarPorId(
-            @PathVariable Long idUsuario
+            @PathVariable Integer idUsuario
     ) {
         return ResponseEntity.ok(usuarioService.buscarPorId(idUsuario));
     }
@@ -53,7 +53,7 @@ public class UsuarioController {
 
     @PutMapping("/api/usuarios/{idUsuario}")
     public ResponseEntity<UsuarioResponseDTO> atualizar(
-            @PathVariable Long idUsuario,
+            @PathVariable Integer idUsuario,
             @Valid @RequestBody UsuarioRequestDTO dto
     ) {
         return ResponseEntity.ok(usuarioService.atualizar(idUsuario, dto));
@@ -61,28 +61,28 @@ public class UsuarioController {
 
     @PatchMapping("/api/usuarios/{idUsuario}/toggle-ativo")
     public ResponseEntity<UsuarioResponseDTO> toggleAtivo(
-            @PathVariable Long idUsuario
+            @PathVariable Integer idUsuario
     ) {
         return ResponseEntity.ok(usuarioService.toggleAtivo(idUsuario));
     }
 
     @PatchMapping("/api/usuarios/{idUsuario}/ativar")
     public ResponseEntity<UsuarioResponseDTO> ativar(
-            @PathVariable Long idUsuario
+            @PathVariable Integer idUsuario
     ) {
         return ResponseEntity.ok(usuarioService.ativar(idUsuario));
     }
 
     @PatchMapping("/api/usuarios/{idUsuario}/desativar")
     public ResponseEntity<UsuarioResponseDTO> desativar(
-            @PathVariable Long idUsuario
+            @PathVariable Integer idUsuario
     ) {
         return ResponseEntity.ok(usuarioService.desativar(idUsuario));
     }
 
     @PostMapping("/api/usuarios/{idUsuario}/reset-senha")
     public ResponseEntity<Map<String, String>> resetarSenha(
-            @PathVariable Long idUsuario
+            @PathVariable Integer idUsuario
     ) {
         usuarioService.resetarSenha(idUsuario);
 
@@ -93,7 +93,7 @@ public class UsuarioController {
 
     @PatchMapping("/api/usuarios/{idUsuario}/alterar-senha")
     public ResponseEntity<Map<String, String>> alterarSenha(
-            @PathVariable Long idUsuario,
+            @PathVariable Integer idUsuario,
             @Valid @RequestBody AlterarSenhaRequestDTO dto
     ) {
         usuarioService.alterarSenha(idUsuario, dto);

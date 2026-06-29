@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
+public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     Optional<Usuario> findByUsernameIgnoreCase(String username);
 
@@ -22,7 +22,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
            LEFT JOIN FETCH u.perfil
            WHERE u.idUsuario = :idUsuario
            """)
-    Optional<Usuario> findByIdComPerfil(@Param("idUsuario") Long idUsuario);
+    Optional<Usuario> findByIdComPerfil(@Param("idUsuario") Integer idUsuario);
 
     @Query("""
            SELECT u

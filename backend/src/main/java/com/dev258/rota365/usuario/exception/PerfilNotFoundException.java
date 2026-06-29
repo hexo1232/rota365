@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ResponseStatus(HttpStatus.NOT_FOUND)
 public class PerfilNotFoundException extends RuntimeException {
 
-    public PerfilNotFoundException(Long idPerfil) {
+    public PerfilNotFoundException(Integer idPerfil) {
         super("Perfil não encontrado com o ID: " + idPerfil);
     }
 

@@ -5,11 +5,11 @@ import com.dev258.rota365.usuario.entity.Usuario;
 import java.time.LocalDateTime;
 
 public record UsuarioResponseDTO(
-        Long idUsuario,
+        Integer idUsuario,
         String nome,
         String username,
         Boolean ativo,
-        Long idPerfil,
+        Integer idPerfil,
         String nomePerfil,
         LocalDateTime criadoEm
 ) {

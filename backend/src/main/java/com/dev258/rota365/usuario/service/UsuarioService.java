@@ -53,12 +53,11 @@ public class UsuarioService {
     // BUSCA POR ID
     // ─────────────────────────────────────────────────────────────
 
-    @Transactional(readOnly = true)
-    public UsuarioResponseDTO buscarPorId(Long idUsuario) {
-        Usuario usuario = buscarUsuarioOuLancar(idUsuario);
-        return new UsuarioResponseDTO(usuario);
-    }
-
+  @Transactional(readOnly = true)
+public UsuarioResponseDTO buscarPorId(Integer idUsuario) {
+    Usuario usuario = buscarUsuarioOuLancar(idUsuario);
+    return new UsuarioResponseDTO(usuario);
+}
     // ─────────────────────────────────────────────────────────────
     // CRIAÇÃO
     // ─────────────────────────────────────────────────────────────
@@ -88,9 +87,9 @@ public class UsuarioService {
     // EDIÇÃO
     // ─────────────────────────────────────────────────────────────
 
-    @Transactional
-    public UsuarioResponseDTO atualizar(Long idUsuario, UsuarioRequestDTO dto) {
-        Usuario usuario = buscarUsuarioOuLancar(idUsuario);
+@Transactional
+public UsuarioResponseDTO atualizar(Integer idUsuario, UsuarioRequestDTO dto) {
+    Usuario usuario = buscarUsuarioOuLancar(idUsuario);
 
         String novoUsername = dto.username().trim();
 
@@ -118,9 +117,9 @@ public class UsuarioService {
     // ACTIVAR / DESACTIVAR
     // ─────────────────────────────────────────────────────────────
 
-    @Transactional
-    public UsuarioResponseDTO toggleAtivo(Long idUsuario) {
-        Usuario usuario = buscarUsuarioOuLancar(idUsuario);
+@Transactional
+public UsuarioResponseDTO toggleAtivo(Integer idUsuario) {
+    Usuario usuario = buscarUsuarioOuLancar(idUsuario);
 
         usuario.setAtivo(!Boolean.TRUE.equals(usuario.getAtivo()));
 
@@ -129,9 +128,9 @@ public class UsuarioService {
         return new UsuarioResponseDTO(atualizado);
     }
 
-    @Transactional
-    public UsuarioResponseDTO ativar(Long idUsuario) {
-        Usuario usuario = buscarUsuarioOuLancar(idUsuario);
+@Transactional
+public UsuarioResponseDTO ativar(Integer idUsuario) {
+    Usuario usuario = buscarUsuarioOuLancar(idUsuario);
 
         usuario.setAtivo(true);
 
@@ -140,9 +139,9 @@ public class UsuarioService {
         return new UsuarioResponseDTO(atualizado);
     }
 
-    @Transactional
-    public UsuarioResponseDTO desativar(Long idUsuario) {
-        Usuario usuario = buscarUsuarioOuLancar(idUsuario);
+@Transactional
+public UsuarioResponseDTO desativar(Integer idUsuario) {
+    Usuario usuario = buscarUsuarioOuLancar(idUsuario);
 
         usuario.setAtivo(false);
 
@@ -155,22 +154,20 @@ public class UsuarioService {
     // RESET DE SENHA
     // ─────────────────────────────────────────────────────────────
 
-    @Transactional
-    public void resetarSenha(Long idUsuario) {
-        Usuario usuario = buscarUsuarioOuLancar(idUsuario);
-
-        usuario.setSenhaHash(passwordEncoder.encode(SENHA_PADRAO));
-
-        usuarioRepository.save(usuario);
-    }
+@Transactional
+public void resetarSenha(Integer idUsuario) {
+    Usuario usuario = buscarUsuarioOuLancar(idUsuario);
+    usuario.setSenhaHash(passwordEncoder.encode(SENHA_PADRAO));
+    usuarioRepository.save(usuario);
+}
 
     // ─────────────────────────────────────────────────────────────
     // ALTERAR SENHA
     // ─────────────────────────────────────────────────────────────
 
-    @Transactional
-    public void alterarSenha(Long idUsuario, AlterarSenhaRequestDTO dto) {
-        Usuario usuario = buscarUsuarioOuLancar(idUsuario);
+@Transactional
+public void alterarSenha(Integer idUsuario, AlterarSenhaRequestDTO dto) {
+    Usuario usuario = buscarUsuarioOuLancar(idUsuario);
 
         if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenhaHash())) {
             throw new CredenciaisInvalidasException("A senha actual está incorrecta.");
@@ -217,10 +214,10 @@ public class UsuarioService {
     // HELPERS PRIVADOS
     // ─────────────────────────────────────────────────────────────
 
-    private Usuario buscarUsuarioOuLancar(Long idUsuario) {
-        return usuarioRepository.findByIdComPerfil(idUsuario)
-                .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
-    }
+private Usuario buscarUsuarioOuLancar(Integer idUsuario) {
+    return usuarioRepository.findByIdComPerfil(idUsuario)
+            .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
+}
 
     private void validarUsernameDisponivel(String username) {
         if (usuarioRepository.existsByUsernameIgnoreCase(username.trim())) {
@@ -228,14 +225,14 @@ public class UsuarioService {
         }
     }
 
-    private Perfil buscarPerfilSeInformado(Long idPerfil) {
-        if (idPerfil == null) {
-            return null;
-        }
-
-        return perfilRepository.findById(idPerfil)
-                .orElseThrow(() -> new PerfilNotFoundException(idPerfil));
+private Perfil buscarPerfilSeInformado(Integer idPerfil) {
+    if (idPerfil == null) {
+        return null;
     }
+
+    return perfilRepository.findById(idPerfil)
+            .orElseThrow(() -> new PerfilNotFoundException(idPerfil));
+}
 
     private String resolverSenha(String senha) {
         if (senha == null || senha.isBlank()) {
