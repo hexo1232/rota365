@@ -15,15 +15,6 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    /*
-     * Configuração inicial para o Rota365.
-     *
-     * Nesta fase:
-     * - liberamos o login;
-     * - liberamos temporariamente as rotas de usuário para facilitar testes;
-     * - desativamos CSRF porque a API será consumida pelo Flutter;
-     * - mantemos estrutura pronta para evoluir para JWT depois.
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -31,33 +22,41 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
 
                 .authorizeHttpRequests(auth -> auth
-
-                        // ── Autenticação ─────────────────────────────
+                        // ─────────────────────────────────────────────
+                        // AUTENTICAÇÃO
+                        // ─────────────────────────────────────────────
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
 
-                        // ── Usuários temporariamente livres para testes ─
+                        // ─────────────────────────────────────────────
+                        // USUÁRIOS
+                        // Temporariamente liberado em fase de testes.
+                        // Depois, quando implementarmos JWT, protegemos.
+                        // ─────────────────────────────────────────────
                         .requestMatchers("/api/usuarios/**").permitAll()
 
-                        // ── Health check, se adicionaste Actuator ─────
+                        // ─────────────────────────────────────────────
+                        // PERFIS
+                        // Necessário para o formulário de cadastro carregar
+                        // Gerente, Vendedor, Cliente, etc.
+                        // ─────────────────────────────────────────────
+                        .requestMatchers(HttpMethod.GET, "/api/perfis").permitAll()
+
+                        // ─────────────────────────────────────────────
+                        // HEALTH CHECK
+                        // ─────────────────────────────────────────────
                         .requestMatchers("/actuator/health").permitAll()
 
-                        // ── Qualquer outra rota exige autenticação ─────
+                        // ─────────────────────────────────────────────
+                        // RESTANTE
+                        // ─────────────────────────────────────────────
                         .anyRequest().authenticated()
                 )
 
-                /*
-                 * HTTP Basic fica activo apenas para facilitar testes manuais.
-                 * Quando entrarmos com JWT, poderemos remover isto.
-                 */
                 .httpBasic(Customizer.withDefaults())
 
                 .build();
     }
 
-    /*
-     * Expõe o AuthenticationManager como bean.
-     * Será útil quando evoluirmos para autenticação real com JWT.
-     */
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration
