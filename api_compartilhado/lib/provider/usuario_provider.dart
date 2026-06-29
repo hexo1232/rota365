@@ -11,13 +11,15 @@ class UsuarioProvider extends ChangeNotifier {
   }) : _repository = repository ?? UsuarioRepository();
 
   // ─────────────────────────────────────────────────────────────
-  // ESTADO
+  // ESTADO GERAL
   // ─────────────────────────────────────────────────────────────
 
   bool _isLoading = false;
   String? _erro;
 
   List<UsuarioModel> _usuarios = [];
+  List<PerfilUsuarioModel> _perfis = [];
+
   UsuarioModel? _usuarioSelecionado;
   UsuarioModel? _usuarioLogado;
   String? _token;
@@ -26,11 +28,16 @@ class UsuarioProvider extends ChangeNotifier {
   String? get erro => _erro;
 
   List<UsuarioModel> get usuarios => List.unmodifiable(_usuarios);
+  List<PerfilUsuarioModel> get perfis => List.unmodifiable(_perfis);
+
   UsuarioModel? get usuarioSelecionado => _usuarioSelecionado;
   UsuarioModel? get usuarioLogado => _usuarioLogado;
   String? get token => _token;
 
   bool get temUsuarioLogado => _usuarioLogado != null;
+
+  bool get temPerfis => _perfis.isNotEmpty;
+  bool get temUsuarios => _usuarios.isNotEmpty;
 
   // ─────────────────────────────────────────────────────────────
   // AUTH
@@ -66,12 +73,52 @@ class UsuarioProvider extends ChangeNotifier {
     _usuarioLogado = null;
     _token = null;
     _usuarioSelecionado = null;
+
     _limparErro();
     notifyListeners();
   }
 
   // ─────────────────────────────────────────────────────────────
-  // LISTAGEM
+  // PERFIS
+  //
+  // Regra:
+  // - Perfis vêm da tabela perfil via GET /api/perfis.
+  // - Administrador não deve aparecer no cadastro.
+  // - Repository/Service já filtram, mas mantemos defesa aqui.
+  // ─────────────────────────────────────────────────────────────
+
+  Future<void> carregarPerfis() async {
+    _setLoading(true);
+    _limparErro();
+
+    try {
+      final perfisApi = await _repository.listarPerfis();
+
+      _perfis = perfisApi
+          .where((perfil) => !perfil.isAdministrador)
+          .toList();
+
+      notifyListeners();
+    } catch (e) {
+      _setErro(_normalizarErro(e));
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  void limparPerfis() {
+    _perfis = [];
+    notifyListeners();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // LISTAGEM DE USUÁRIOS
+  //
+  // Regra:
+  // - Administrador não aparece na lista.
+  // - Backend já filtra.
+  // - Repository/Service também filtram.
+  // - Provider mantém defesa final.
   // ─────────────────────────────────────────────────────────────
 
   Future<void> carregarUsuarios({bool? ativo}) async {
@@ -79,7 +126,10 @@ class UsuarioProvider extends ChangeNotifier {
     _limparErro();
 
     try {
-      _usuarios = await _repository.listarPorStatus(ativo: ativo);
+      final usuariosApi = await _repository.listarPorStatus(ativo: ativo);
+
+      _usuarios = _removerAdministradores(usuariosApi);
+
       notifyListeners();
     } catch (e) {
       _setErro(_normalizarErro(e));
@@ -110,7 +160,14 @@ class UsuarioProvider extends ChangeNotifier {
 
     try {
       final usuario = await _repository.buscarPorId(idUsuario);
+
+      if (_isAdministrador(usuario.nomePerfil)) {
+        _setErro('Usuário administrador não pode ser exibido nesta área.');
+        return null;
+      }
+
       _usuarioSelecionado = usuario;
+
       notifyListeners();
       return usuario;
     } catch (e) {
@@ -122,6 +179,11 @@ class UsuarioProvider extends ChangeNotifier {
   }
 
   void selecionarUsuario(UsuarioModel? usuario) {
+    if (usuario != null && _isAdministrador(usuario.nomePerfil)) {
+      _setErro('Usuário administrador não pode ser seleccionado nesta área.');
+      return;
+    }
+
     _usuarioSelecionado = usuario;
     notifyListeners();
   }
@@ -132,13 +194,17 @@ class UsuarioProvider extends ChangeNotifier {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // CRIAR
+  // CRIAR USUÁRIO
+  //
+  // Regra:
+  // - O formulário não tem campo senha.
+  // - A senha não é enviada pelo frontend.
+  // - Backend aplica senha padrão 12345678.
   // ─────────────────────────────────────────────────────────────
 
   Future<bool> criarUsuario({
     required String nome,
     required String username,
-    String? senha,
     int? idPerfil,
   }) async {
     _setLoading(true);
@@ -148,11 +214,12 @@ class UsuarioProvider extends ChangeNotifier {
       final criado = await _repository.criar(
         nome: nome,
         username: username,
-        senha: senha,
         idPerfil: idPerfil,
       );
 
-      _usuarios = [criado, ..._usuarios];
+      if (!_isAdministrador(criado.nomePerfil)) {
+        _usuarios = [criado, ..._usuarios];
+      }
 
       notifyListeners();
       return true;
@@ -165,14 +232,17 @@ class UsuarioProvider extends ChangeNotifier {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // ACTUALIZAR
+  // ACTUALIZAR USUÁRIO
+  //
+  // Regra:
+  // - O formulário não altera senha.
+  // - Backend mantém a senha actual.
   // ─────────────────────────────────────────────────────────────
 
   Future<bool> atualizarUsuario({
     required int idUsuario,
     required String nome,
     required String username,
-    String? senha,
     int? idPerfil,
   }) async {
     _setLoading(true);
@@ -183,14 +253,19 @@ class UsuarioProvider extends ChangeNotifier {
         idUsuario: idUsuario,
         nome: nome,
         username: username,
-        senha: senha,
         idPerfil: idPerfil,
       );
 
-      _substituirNaLista(atualizado);
+      if (_isAdministrador(atualizado.nomePerfil)) {
+        _removerDaLista(idUsuario);
+      } else {
+        _substituirNaLista(atualizado);
+      }
 
       if (_usuarioSelecionado?.idUsuario == idUsuario) {
-        _usuarioSelecionado = atualizado;
+        _usuarioSelecionado = _isAdministrador(atualizado.nomePerfil)
+            ? null
+            : atualizado;
       }
 
       if (_usuarioLogado?.idUsuario == idUsuario) {
@@ -217,6 +292,13 @@ class UsuarioProvider extends ChangeNotifier {
 
     try {
       final atualizado = await _repository.toggleAtivo(idUsuario);
+
+      if (_isAdministrador(atualizado.nomePerfil)) {
+        _removerDaLista(idUsuario);
+        _setErro('Usuário administrador não pode ser alterado nesta área.');
+        return false;
+      }
+
       _substituirNaLista(atualizado);
 
       if (_usuarioSelecionado?.idUsuario == idUsuario) {
@@ -243,10 +325,21 @@ class UsuarioProvider extends ChangeNotifier {
 
     try {
       final atualizado = await _repository.ativar(idUsuario);
+
+      if (_isAdministrador(atualizado.nomePerfil)) {
+        _removerDaLista(idUsuario);
+        _setErro('Usuário administrador não pode ser activado nesta área.');
+        return false;
+      }
+
       _substituirNaLista(atualizado);
 
       if (_usuarioSelecionado?.idUsuario == idUsuario) {
         _usuarioSelecionado = atualizado;
+      }
+
+      if (_usuarioLogado?.idUsuario == idUsuario) {
+        _usuarioLogado = atualizado;
       }
 
       notifyListeners();
@@ -265,6 +358,13 @@ class UsuarioProvider extends ChangeNotifier {
 
     try {
       final atualizado = await _repository.desativar(idUsuario);
+
+      if (_isAdministrador(atualizado.nomePerfil)) {
+        _removerDaLista(idUsuario);
+        _setErro('Usuário administrador não pode ser desactivado nesta área.');
+        return false;
+      }
+
       _substituirNaLista(atualizado);
 
       if (_usuarioSelecionado?.idUsuario == idUsuario) {
@@ -337,6 +437,16 @@ class UsuarioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void limparEstado() {
+    _isLoading = false;
+    _erro = null;
+    _usuarios = [];
+    _perfis = [];
+    _usuarioSelecionado = null;
+
+    notifyListeners();
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -363,6 +473,24 @@ class UsuarioProvider extends ChangeNotifier {
     } else {
       _usuarios = [usuario, ..._usuarios];
     }
+
+    _usuarios = _removerAdministradores(_usuarios);
+  }
+
+  void _removerDaLista(int idUsuario) {
+    _usuarios = _usuarios
+        .where((usuario) => usuario.idUsuario != idUsuario)
+        .toList();
+  }
+
+  List<UsuarioModel> _removerAdministradores(List<UsuarioModel> usuarios) {
+    return usuarios
+        .where((usuario) => !_isAdministrador(usuario.nomePerfil))
+        .toList();
+  }
+
+  bool _isAdministrador(String? nomePerfil) {
+    return nomePerfil?.toLowerCase().trim() == 'administrador';
   }
 
   String _normalizarErro(Object erro) {

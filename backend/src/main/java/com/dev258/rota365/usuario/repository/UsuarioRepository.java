@@ -16,6 +16,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     List<Usuario> findByAtivo(Boolean ativo);
 
+    // ─────────────────────────────────────────────────────────────
+    // BUSCAS COM PERFIL
+    // ─────────────────────────────────────────────────────────────
+
     @Query("""
            SELECT u
            FROM Usuario u
@@ -31,6 +35,39 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
            WHERE LOWER(u.username) = LOWER(:username)
            """)
     Optional<Usuario> findByUsernameComPerfil(@Param("username") String username);
+
+    // ─────────────────────────────────────────────────────────────
+    // LISTAGEM GERAL — SEM ADMINISTRADOR
+    // ─────────────────────────────────────────────────────────────
+
+    @Query("""
+           SELECT u
+           FROM Usuario u
+           LEFT JOIN FETCH u.perfil p
+           WHERE p IS NULL
+              OR LOWER(p.nomePerfil) <> 'administrador'
+           ORDER BY u.idUsuario DESC
+           """)
+    List<Usuario> findAllComPerfilSemAdministrador();
+
+    @Query("""
+           SELECT u
+           FROM Usuario u
+           LEFT JOIN FETCH u.perfil p
+           WHERE u.ativo = :ativo
+             AND (
+                p IS NULL
+                OR LOWER(p.nomePerfil) <> 'administrador'
+             )
+           ORDER BY u.idUsuario DESC
+           """)
+    List<Usuario> findByAtivoComPerfilSemAdministrador(
+            @Param("ativo") Boolean ativo
+    );
+
+    // ─────────────────────────────────────────────────────────────
+    // MÉTODOS ANTIGOS — PODES MANTER PARA USO INTERNO/FUTURO
+    // ─────────────────────────────────────────────────────────────
 
     @Query("""
            SELECT u

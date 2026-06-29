@@ -151,7 +151,7 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
   }
 
   void _abrirCadastro() {
-    Navigator.pushNamed(context, '/usuarios/novo');
+    Navigator.pushNamed(context, '/usuarios/form');
   }
 
   void _mostrarErro(String mensagem) {
@@ -164,21 +164,29 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
   }
 
   Color _corPerfil(String? perfil) {
-    final nome = perfil?.toLowerCase() ?? '';
-
-    if (nome.contains('admin')) {
-      return Colors.deepPurple;
-    }
+    final nome = perfil?.toLowerCase().trim() ?? '';
 
     if (nome.contains('gerente')) {
       return Colors.blue;
     }
 
-    if (nome.contains('operador') || nome.contains('vendedor')) {
+    if (nome.contains('operador')) {
       return Colors.green;
     }
 
+    if (nome.contains('vendedor')) {
+      return Colors.teal;
+    }
+
+    if (nome.contains('cliente')) {
+      return Colors.orange;
+    }
+
     return Colors.blueGrey;
+  }
+
+  bool _isAdministrador(UsuarioModel usuario) {
+    return usuario.nomePerfil?.toLowerCase().trim() == 'administrador';
   }
 
   @override
@@ -205,6 +213,10 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
       ),
       body: Consumer<UsuarioProvider>(
         builder: (context, provider, _) {
+          final usuariosVisiveis = provider.usuarios
+              .where((usuario) => !_isAdministrador(usuario))
+              .toList();
+
           return Column(
             children: [
               _FiltrosUsuarios(
@@ -231,19 +243,19 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
                 ),
 
               Expanded(
-                child: provider.isLoading && provider.usuarios.isEmpty
+                child: provider.isLoading && usuariosVisiveis.isEmpty
                     ? const Center(child: CircularProgressIndicator())
-                    : provider.usuarios.isEmpty
+                    : usuariosVisiveis.isEmpty
                         ? const _EstadoVazioUsuarios()
                         : RefreshIndicator(
                             onRefresh: () => _aplicarFiltro(_filtro),
                             child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                              itemCount: provider.usuarios.length,
+                              itemCount: usuariosVisiveis.length,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(height: 10),
                               itemBuilder: (context, index) {
-                                final usuario = provider.usuarios[index];
+                                final usuario = usuariosVisiveis[index];
                                 final perfilCor = _corPerfil(usuario.nomePerfil);
 
                                 return Material(
@@ -260,7 +272,7 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
                                           CircleAvatar(
                                             radius: 24,
                                             backgroundColor:
-                                                perfilCor.withValues(alpha: 0.12),
+                                                perfilCor.withOpacity(0.12),
                                             child: Text(
                                               usuario.nome.isNotEmpty
                                                   ? usuario.nome[0].toUpperCase()
@@ -271,6 +283,7 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
                                               ),
                                             ),
                                           ),
+
                                           const SizedBox(width: 12),
 
                                           Expanded(
@@ -325,10 +338,11 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
                                                     ),
                                                     if (usuario.criadoEm != null)
                                                       _InfoBadge(
-                                                        icon:
-                                                            Icons.calendar_today_rounded,
-                                                        texto:
-                                                            _formatarData(usuario.criadoEm!),
+                                                        icon: Icons
+                                                            .calendar_today_rounded,
+                                                        texto: _formatarData(
+                                                          usuario.criadoEm!,
+                                                        ),
                                                       ),
                                                   ],
                                                 ),
@@ -344,13 +358,15 @@ class _UsuarioListScreenState extends State<UsuarioListScreen> {
                                                 value: usuario.ativo,
                                                 onChanged: provider.isLoading
                                                     ? null
-                                                    : (_) => _toggleAtivo(usuario),
+                                                    : (_) =>
+                                                        _toggleAtivo(usuario),
                                               ),
                                               IconButton(
                                                 tooltip: 'Reiniciar senha',
                                                 onPressed: provider.isLoading
                                                     ? null
-                                                    : () => _resetarSenha(usuario),
+                                                    : () =>
+                                                        _resetarSenha(usuario),
                                                 icon: const Icon(
                                                   Icons.lock_reset_rounded,
                                                 ),
@@ -488,7 +504,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -517,7 +533,7 @@ class _PerfilBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: cor.withValues(alpha: 0.1),
+        color: cor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

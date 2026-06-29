@@ -3,8 +3,10 @@ package com.dev258.rota365.usuario.controller;
 import com.dev258.rota365.usuario.dto.AlterarSenhaRequestDTO;
 import com.dev258.rota365.usuario.dto.LoginRequestDTO;
 import com.dev258.rota365.usuario.dto.LoginResponseDTO;
+import com.dev258.rota365.usuario.dto.PerfilResponseDTO;
 import com.dev258.rota365.usuario.dto.UsuarioRequestDTO;
 import com.dev258.rota365.usuario.dto.UsuarioResponseDTO;
+import com.dev258.rota365.usuario.dto.PerfilResponseDTO;
 import com.dev258.rota365.usuario.service.UsuarioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -102,6 +104,11 @@ public class UsuarioController {
                 Map.of("mensagem", "Senha alterada com sucesso.")
         );
     }
+
+    @GetMapping("/api/perfis")
+public ResponseEntity<List<PerfilResponseDTO>> listarPerfis() {
+    return ResponseEntity.ok(usuarioService.listarPerfisOperacionais());
+}
 
     // ─────────────────────────────────────────────────────────────
     // AUTENTICAÇÃO

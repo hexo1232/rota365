@@ -8,6 +8,16 @@ export 'api_config.dart';
 
 // ─────────────────────────────────────────────────────────────
 // USUÁRIO
+//
+// Inclui:
+// - UsuarioModel
+// - PerfilUsuarioModel
+// - UsuarioRequestModel
+// - LoginRequestModel
+// - LoginResponseModel
+// - UsuarioService
+// - UsuarioRepository
+// - UsuarioProvider
 // ─────────────────────────────────────────────────────────────
 
 export 'model/usuario_model.dart';

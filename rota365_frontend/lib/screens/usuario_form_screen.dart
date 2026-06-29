@@ -15,22 +15,11 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
 
   final _nomeController = TextEditingController();
   final _usernameController = TextEditingController();
-  final _senhaController = TextEditingController();
 
   UsuarioModel? _usuarioEdicao;
   bool _carregouArgumentos = false;
+  bool _carregouPerfis = false;
   int? _idPerfilSelecionado;
-
-  /*
-   * Temporário:
-   * Depois substituímos por GET /api/perfis.
-   */
-  final List<_PerfilOpcao> _perfis = const [
-    _PerfilOpcao(id: 1, nome: 'Administrador', icon: Icons.admin_panel_settings_rounded),
-    _PerfilOpcao(id: 2, nome: 'Gerente', icon: Icons.manage_accounts_rounded),
-    _PerfilOpcao(id: 3, nome: 'Operador', icon: Icons.point_of_sale_rounded),
-    _PerfilOpcao(id: 4, nome: 'Vendedor', icon: Icons.confirmation_number_rounded),
-  ];
 
   bool get _modoEdicao => _usuarioEdicao != null;
 
@@ -48,16 +37,42 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
       _nomeController.text = args.nome;
       _usernameController.text = args.username;
       _idPerfilSelecionado = args.idPerfil;
-    } else {
-      _idPerfilSelecionado = _perfis.first.id;
     }
+
+    Future.microtask(() async {
+      final provider = context.read<UsuarioProvider>();
+
+      await provider.carregarPerfis();
+
+      if (!mounted) return;
+
+      final perfis = provider.perfis;
+
+      if (perfis.isEmpty) {
+        return;
+      }
+
+      final existePerfilSelecionado = perfis.any(
+        (perfil) => perfil.idPerfil == _idPerfilSelecionado,
+      );
+
+      if (_idPerfilSelecionado == null || !existePerfilSelecionado) {
+        setState(() {
+          _idPerfilSelecionado = perfis.first.idPerfil;
+          _carregouPerfis = true;
+        });
+      } else {
+        setState(() {
+          _carregouPerfis = true;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _nomeController.dispose();
     _usernameController.dispose();
-    _senhaController.dispose();
     super.dispose();
   }
 
@@ -70,7 +85,6 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
 
     final nome = _nomeController.text.trim();
     final username = _usernameController.text.trim();
-    final senhaDigitada = _senhaController.text.trim();
 
     bool sucesso;
 
@@ -79,19 +93,12 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
         idUsuario: _usuarioEdicao!.idUsuario,
         nome: nome,
         username: username,
-        senha: senhaDigitada.isEmpty ? null : senhaDigitada,
         idPerfil: _idPerfilSelecionado,
       );
     } else {
-      /*
-       * Enviamos senha null/vazia para o backend aplicar a senha padrão.
-       * Regra esperada no Java:
-       * SENHA_PADRAO = "12345678"
-       */
       sucesso = await provider.criarUsuario(
         nome: nome,
         username: username,
-        senha: senhaDigitada.isEmpty ? null : senhaDigitada,
         idPerfil: _idPerfilSelecionado,
       );
     }
@@ -125,13 +132,58 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
   }
 
   Color _corPerfil(String nome) {
-    final perfil = nome.toLowerCase();
+    final perfil = nome.toLowerCase().trim();
 
-    if (perfil.contains('admin')) return Colors.deepPurple;
     if (perfil.contains('gerente')) return Colors.blue;
-    if (perfil.contains('operador') || perfil.contains('vendedor')) return Colors.green;
+    if (perfil.contains('operador')) return Colors.green;
+    if (perfil.contains('vendedor')) return Colors.teal;
+    if (perfil.contains('cliente')) return Colors.orange;
 
     return Colors.blueGrey;
+  }
+
+  IconData _iconePerfil(String nome) {
+    final perfil = nome.toLowerCase().trim();
+
+    if (perfil.contains('gerente')) {
+      return Icons.manage_accounts_rounded;
+    }
+
+    if (perfil.contains('operador')) {
+      return Icons.point_of_sale_rounded;
+    }
+
+    if (perfil.contains('vendedor')) {
+      return Icons.confirmation_number_rounded;
+    }
+
+    if (perfil.contains('cliente')) {
+      return Icons.person_rounded;
+    }
+
+    return Icons.shield_rounded;
+  }
+
+  String _descricaoPerfil(String nome) {
+    final perfil = nome.toLowerCase().trim();
+
+    if (perfil.contains('gerente')) {
+      return 'Acesso à gestão operacional e acompanhamento das vendas.';
+    }
+
+    if (perfil.contains('operador')) {
+      return 'Acesso às operações diárias do balcão e apoio à venda.';
+    }
+
+    if (perfil.contains('vendedor')) {
+      return 'Acesso à venda de bilhetes e operações comerciais.';
+    }
+
+    if (perfil.contains('cliente')) {
+      return 'Perfil reservado para clientes ou acessos limitados.';
+    }
+
+    return 'Perfil de acesso operacional.';
   }
 
   @override
@@ -156,6 +208,15 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
       ),
       body: Consumer<UsuarioProvider>(
         builder: (context, provider, _) {
+          final perfis = provider.perfis
+              .where((perfil) => !perfil.isAdministrador)
+              .toList();
+
+          final perfilSelecionado = perfis
+              .where((perfil) => perfil.idPerfil == _idPerfilSelecionado)
+              .cast<PerfilUsuarioModel?>()
+              .firstOrNull;
+
           return Stack(
             children: [
               Form(
@@ -217,7 +278,7 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
 
                         TextFormField(
                           controller: _usernameController,
-                          textInputAction: TextInputAction.next,
+                          textInputAction: TextInputAction.done,
                           decoration: const InputDecoration(
                             labelText: 'Username',
                             hintText: 'Ex: matias',
@@ -251,110 +312,79 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
                       titulo: 'Perfil de acesso',
                       icon: Icons.admin_panel_settings_rounded,
                       children: [
-                        DropdownButtonFormField<int>(
-                          value: _idPerfilSelecionado,
-                          decoration: const InputDecoration(
-                            labelText: 'Perfil',
-                            prefixIcon: Icon(Icons.shield_rounded),
-                            border: OutlineInputBorder(),
-                          ),
-                          items: _perfis.map((perfil) {
-                            final cor = _corPerfil(perfil.nome);
+                        if (provider.isLoading && !_carregouPerfis)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 18),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else if (perfis.isEmpty)
+                          const _SemPerfisDisponiveis()
+                        else ...[
+                          DropdownButtonFormField<int>(
+                            value: _idPerfilSelecionado,
+                            decoration: const InputDecoration(
+                              labelText: 'Perfil',
+                              prefixIcon: Icon(Icons.shield_rounded),
+                              border: OutlineInputBorder(),
+                            ),
+                            items: perfis.map((perfil) {
+                              final cor = _corPerfil(perfil.nomePerfil);
 
-                            return DropdownMenuItem<int>(
-                              value: perfil.id,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    perfil.icon,
-                                    size: 20,
-                                    color: cor,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(perfil.nome),
-                                ],
+                              return DropdownMenuItem<int>(
+                                value: perfil.idPerfil,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _iconePerfil(perfil.nomePerfil),
+                                      size: 20,
+                                      color: cor,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(perfil.nomePerfil),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: provider.isLoading
+                                ? null
+                                : (value) {
+                                    setState(() {
+                                      _idPerfilSelecionado = value;
+                                    });
+                                  },
+                            validator: (value) {
+                              if (value == null) {
+                                return 'Escolha o perfil do usuário.';
+                              }
+
+                              return null;
+                            },
+                          ),
+
+                          if (perfilSelecionado != null) ...[
+                            const SizedBox(height: 12),
+                            _PerfilPreview(
+                              nomePerfil: perfilSelecionado.nomePerfil,
+                              icon: _iconePerfil(
+                                perfilSelecionado.nomePerfil,
                               ),
-                            );
-                          }).toList(),
-                          onChanged: provider.isLoading
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _idPerfilSelecionado = value;
-                                  });
-                                },
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Escolha o perfil do usuário.';
-                            }
-
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        _PerfilPreview(
-                          perfil: _perfis.firstWhere(
-                            (p) => p.id == _idPerfilSelecionado,
-                            orElse: () => _perfis.first,
-                          ),
-                          cor: _corPerfil(
-                            _perfis
-                                .firstWhere(
-                                  (p) => p.id == _idPerfilSelecionado,
-                                  orElse: () => _perfis.first,
-                                )
-                                .nome,
-                          ),
-                        ),
+                              cor: _corPerfil(
+                                perfilSelecionado.nomePerfil,
+                              ),
+                              descricao: _descricaoPerfil(
+                                perfilSelecionado.nomePerfil,
+                              ),
+                            ),
+                          ],
+                        ],
                       ],
                     ),
 
                     const SizedBox(height: 16),
 
-                    _CardSecao(
-                      titulo: 'Senha',
-                      icon: Icons.lock_rounded,
-                      children: [
-                        TextFormField(
-                          controller: _senhaController,
-                          obscureText: true,
-                          textInputAction: TextInputAction.done,
-                          decoration: InputDecoration(
-                            labelText: _modoEdicao
-                                ? 'Nova senha opcional'
-                                : 'Senha opcional',
-                            hintText: _modoEdicao
-                                ? 'Deixe vazio para manter a senha actual'
-                                : 'Deixe vazio para usar 12345678',
-                            prefixIcon: const Icon(Icons.password_rounded),
-                            border: const OutlineInputBorder(),
-                          ),
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-
-                            if (text.isEmpty) return null;
-
-                            if (text.length < 6) {
-                              return 'A senha deve ter pelo menos 6 caracteres.';
-                            }
-
-                            if (text.length > 100) {
-                              return 'A senha deve ter no máximo 100 caracteres.';
-                            }
-
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        _AvisoSenhaPadrao(
-                          modoEdicao: _modoEdicao,
-                        ),
-                      ],
-                    ),
+                    const _AvisoSenhaAutomatica(),
 
                     const SizedBox(height: 22),
 
@@ -415,7 +445,7 @@ class _CabecalhoForm extends StatelessWidget {
 
     final subtitulo = modoEdicao
         ? 'Altere os dados do usuário seleccionado.'
-        : 'Preencha os dados do operador que terá acesso ao sistema.';
+        : 'Preencha os dados do usuário que terá acesso ao sistema.';
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -527,30 +557,20 @@ class _CardSecao extends StatelessWidget {
 }
 
 class _PerfilPreview extends StatelessWidget {
-  final _PerfilOpcao perfil;
+  final String nomePerfil;
+  final IconData icon;
   final Color cor;
+  final String descricao;
 
   const _PerfilPreview({
-    required this.perfil,
+    required this.nomePerfil,
+    required this.icon,
     required this.cor,
+    required this.descricao,
   });
 
   @override
   Widget build(BuildContext context) {
-    String descricao;
-
-    final nome = perfil.nome.toLowerCase();
-
-    if (nome.contains('admin')) {
-      descricao = 'Acesso máximo às configurações e gestão do sistema.';
-    } else if (nome.contains('gerente')) {
-      descricao = 'Acesso à gestão operacional e acompanhamento das vendas.';
-    } else if (nome.contains('operador') || nome.contains('vendedor')) {
-      descricao = 'Acesso às operações de venda de bilhetes no balcão.';
-    } else {
-      descricao = 'Perfil de acesso personalizado.';
-    }
-
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -561,7 +581,7 @@ class _PerfilPreview extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            perfil.icon,
+            icon,
             color: cor,
           ),
           const SizedBox(width: 10),
@@ -580,19 +600,11 @@ class _PerfilPreview extends StatelessWidget {
   }
 }
 
-class _AvisoSenhaPadrao extends StatelessWidget {
-  final bool modoEdicao;
-
-  const _AvisoSenhaPadrao({
-    required this.modoEdicao,
-  });
+class _AvisoSenhaAutomatica extends StatelessWidget {
+  const _AvisoSenhaAutomatica();
 
   @override
   Widget build(BuildContext context) {
-    final texto = modoEdicao
-        ? 'Ao deixar este campo vazio, a senha actual será mantida.'
-        : 'Ao deixar este campo vazio, o usuário será criado com a senha padrão 12345678.';
-
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -609,7 +621,7 @@ class _AvisoSenhaPadrao extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              texto,
+              'A senha não é definida neste cadastro. O backend criará automaticamente a senha padrão 12345678.',
               style: TextStyle(
                 color: Colors.amber.shade900,
                 fontWeight: FontWeight.w600,
@@ -622,14 +634,37 @@ class _AvisoSenhaPadrao extends StatelessWidget {
   }
 }
 
-class _PerfilOpcao {
-  final int id;
-  final String nome;
-  final IconData icon;
+class _SemPerfisDisponiveis extends StatelessWidget {
+  const _SemPerfisDisponiveis();
 
-  const _PerfilOpcao({
-    required this.id,
-    required this.nome,
-    required this.icon,
-  });
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange.shade800,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Nenhum perfil operacional encontrado. Verifique se a tabela perfil possui Gerente, Vendedor, Cliente ou outro perfil diferente de Administrador.',
+              style: TextStyle(
+                color: Colors.orange.shade900,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

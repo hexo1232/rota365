@@ -29,7 +29,9 @@ class UsuarioService {
     final body = _decodeBody(response);
 
     if (response.statusCode == 200) {
-      return LoginResponseModel.fromJson(body);
+      return LoginResponseModel.fromJson(
+        Map<String, dynamic>.from(body as Map),
+      );
     }
 
     throw UsuarioServiceException(
@@ -42,10 +44,56 @@ class UsuarioService {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // PERFIS
+  // GET /api/perfis
+  //
+  // Regra:
+  // - O backend já deve devolver perfis sem Administrador.
+  // - Ainda assim, aqui removemos Administrador por segurança.
+  // ─────────────────────────────────────────────────────────────
+
+  Future<List<PerfilUsuarioModel>> listarPerfis() async {
+    final response = await _client
+        .get(
+          Uri.parse(ApiConfig.perfisUrl),
+          headers: _headers(),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    final body = _decodeBody(response);
+
+    if (response.statusCode == 200) {
+      final list = body as List<dynamic>;
+
+      return list
+          .map(
+            (item) => PerfilUsuarioModel.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .where((perfil) => !perfil.isAdministrador)
+          .toList();
+    }
+
+    throw UsuarioServiceException(
+      _extractErrorMessage(
+        body,
+        fallback: 'Falha ao listar perfis.',
+      ),
+      statusCode: response.statusCode,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // LISTAR USUÁRIOS
   // GET /api/usuarios
   // GET /api/usuarios?ativo=true
   // GET /api/usuarios?ativo=false
+  //
+  // Regra:
+  // - Administrador não deve aparecer na listagem.
+  // - O backend já deve filtrar.
+  // - O frontend também filtra por segurança.
   // ─────────────────────────────────────────────────────────────
 
   Future<List<UsuarioModel>> listar({bool? ativo}) async {
@@ -67,6 +115,7 @@ class UsuarioService {
               Map<String, dynamic>.from(item as Map),
             ),
           )
+          .where((usuario) => !_isAdministrador(usuario.nomePerfil))
           .toList();
     }
 
@@ -95,9 +144,18 @@ class UsuarioService {
     final body = _decodeBody(response);
 
     if (response.statusCode == 200) {
-      return UsuarioModel.fromJson(
+      final usuario = UsuarioModel.fromJson(
         Map<String, dynamic>.from(body as Map),
       );
+
+      if (_isAdministrador(usuario.nomePerfil)) {
+        throw UsuarioServiceException(
+          'Usuário administrador não pode ser exibido nesta área.',
+          statusCode: 403,
+        );
+      }
+
+      return usuario;
     }
 
     throw UsuarioServiceException(
@@ -112,6 +170,11 @@ class UsuarioService {
   // ─────────────────────────────────────────────────────────────
   // CRIAR
   // POST /api/usuarios
+  //
+  // Regra:
+  // - A senha não aparece no formulário.
+  // - O request pode enviar senha null.
+  // - O backend aplica a senha padrão 12345678.
   // ─────────────────────────────────────────────────────────────
 
   Future<UsuarioModel> criar(UsuarioRequestModel request) async {
@@ -143,6 +206,10 @@ class UsuarioService {
   // ─────────────────────────────────────────────────────────────
   // ATUALIZAR
   // PUT /api/usuarios/{idUsuario}
+  //
+  // Regra:
+  // - O formulário não edita senha.
+  // - A senha deve ir null para manter a senha actual.
   // ─────────────────────────────────────────────────────────────
 
   Future<UsuarioModel> atualizar({
@@ -267,6 +334,9 @@ class UsuarioService {
   // ─────────────────────────────────────────────────────────────
   // RESETAR SENHA
   // POST /api/usuarios/{idUsuario}/reset-senha
+  //
+  // Regra:
+  // - Backend reinicia para 12345678.
   // ─────────────────────────────────────────────────────────────
 
   Future<String> resetarSenha(int idUsuario) async {
@@ -298,6 +368,9 @@ class UsuarioService {
   // ─────────────────────────────────────────────────────────────
   // ALTERAR SENHA
   // PATCH /api/usuarios/{idUsuario}/alterar-senha
+  //
+  // Este método continua existindo para tela futura de alteração
+  // de senha do próprio usuário.
   // ─────────────────────────────────────────────────────────────
 
   Future<String> alterarSenha({
@@ -365,10 +438,8 @@ class UsuarioService {
     required String fallback,
   }) {
     if (body is Map) {
-      final mensagem = body['mensagem'] ??
-          body['message'] ??
-          body['erro'] ??
-          body['error'];
+      final mensagem =
+          body['mensagem'] ?? body['message'] ?? body['erro'] ?? body['error'];
 
       if (mensagem != null && mensagem.toString().trim().isNotEmpty) {
         return mensagem.toString();
@@ -380,6 +451,10 @@ class UsuarioService {
     }
 
     return fallback;
+  }
+
+  bool _isAdministrador(String? nomePerfil) {
+    return nomePerfil?.toLowerCase().trim() == 'administrador';
   }
 }
 

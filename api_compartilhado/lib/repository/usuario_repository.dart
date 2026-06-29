@@ -17,7 +17,7 @@ class UsuarioRepository {
     required String senha,
   }) async {
     final request = LoginRequestModel(
-      username: username,
+      username: username.trim(),
       senha: senha,
     );
 
@@ -25,23 +25,54 @@ class UsuarioRepository {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // PERFIS
+  //
+  // Regra:
+  // - Os perfis vêm da tabela perfil via GET /api/perfis.
+  // - O perfil Administrador não deve aparecer no cadastro.
+  // - O service já faz defesa extra, mas mantemos outra aqui.
+  // ─────────────────────────────────────────────────────────────
+
+  Future<List<PerfilUsuarioModel>> listarPerfis() async {
+    final perfis = await _service.listarPerfis();
+
+    return perfis
+        .where((perfil) => !perfil.isAdministrador)
+        .toList();
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // LISTAGEM
+  //
+  // Regra:
+  // - Administrador não deve aparecer na lista.
+  // - O backend já filtra.
+  // - O service também filtra.
+  // - Aqui mantemos defesa extra para evitar fuga visual.
   // ─────────────────────────────────────────────────────────────
 
   Future<List<UsuarioModel>> listarTodos() async {
-    return _service.listar();
+    final usuarios = await _service.listar();
+
+    return _removerAdministradores(usuarios);
   }
 
   Future<List<UsuarioModel>> listarAtivos() async {
-    return _service.listar(ativo: true);
+    final usuarios = await _service.listar(ativo: true);
+
+    return _removerAdministradores(usuarios);
   }
 
   Future<List<UsuarioModel>> listarInativos() async {
-    return _service.listar(ativo: false);
+    final usuarios = await _service.listar(ativo: false);
+
+    return _removerAdministradores(usuarios);
   }
 
   Future<List<UsuarioModel>> listarPorStatus({bool? ativo}) async {
-    return _service.listar(ativo: ativo);
+    final usuarios = await _service.listar(ativo: ativo);
+
+    return _removerAdministradores(usuarios);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -49,23 +80,35 @@ class UsuarioRepository {
   // ─────────────────────────────────────────────────────────────
 
   Future<UsuarioModel> buscarPorId(int idUsuario) async {
-    return _service.buscarPorId(idUsuario);
+    final usuario = await _service.buscarPorId(idUsuario);
+
+    if (_isAdministrador(usuario.nomePerfil)) {
+      throw UsuarioRepositoryException(
+        'Usuário administrador não pode ser exibido nesta área.',
+      );
+    }
+
+    return usuario;
   }
 
   // ─────────────────────────────────────────────────────────────
   // CRIAÇÃO
+  //
+  // Regra:
+  // - O formulário não mostra campo de senha.
+  // - Enviamos senha null.
+  // - O backend aplica a senha padrão 12345678.
   // ─────────────────────────────────────────────────────────────
 
   Future<UsuarioModel> criar({
     required String nome,
     required String username,
-    String? senha,
     int? idPerfil,
   }) async {
     final request = UsuarioRequestModel(
-      nome: nome,
-      username: username,
-      senha: _normalizarSenha(senha),
+      nome: nome.trim(),
+      username: username.trim(),
+      senha: null,
       idPerfil: idPerfil,
     );
 
@@ -74,19 +117,23 @@ class UsuarioRepository {
 
   // ─────────────────────────────────────────────────────────────
   // ACTUALIZAÇÃO
+  //
+  // Regra:
+  // - O formulário não altera senha.
+  // - Enviamos senha null.
+  // - O backend mantém a senha actual.
   // ─────────────────────────────────────────────────────────────
 
   Future<UsuarioModel> atualizar({
     required int idUsuario,
     required String nome,
     required String username,
-    String? senha,
     int? idPerfil,
   }) async {
     final request = UsuarioRequestModel(
-      nome: nome,
-      username: username,
-      senha: _normalizarSenha(senha),
+      nome: nome.trim(),
+      username: username.trim(),
+      senha: null,
       idPerfil: idPerfil,
     );
 
@@ -101,19 +148,47 @@ class UsuarioRepository {
   // ─────────────────────────────────────────────────────────────
 
   Future<UsuarioModel> toggleAtivo(int idUsuario) async {
-    return _service.toggleAtivo(idUsuario);
+    final usuario = await _service.toggleAtivo(idUsuario);
+
+    if (_isAdministrador(usuario.nomePerfil)) {
+      throw UsuarioRepositoryException(
+        'Usuário administrador não pode ser alterado nesta área.',
+      );
+    }
+
+    return usuario;
   }
 
   Future<UsuarioModel> ativar(int idUsuario) async {
-    return _service.ativar(idUsuario);
+    final usuario = await _service.ativar(idUsuario);
+
+    if (_isAdministrador(usuario.nomePerfil)) {
+      throw UsuarioRepositoryException(
+        'Usuário administrador não pode ser activado nesta área.',
+      );
+    }
+
+    return usuario;
   }
 
   Future<UsuarioModel> desativar(int idUsuario) async {
-    return _service.desativar(idUsuario);
+    final usuario = await _service.desativar(idUsuario);
+
+    if (_isAdministrador(usuario.nomePerfil)) {
+      throw UsuarioRepositoryException(
+        'Usuário administrador não pode ser desactivado nesta área.',
+      );
+    }
+
+    return usuario;
   }
 
   // ─────────────────────────────────────────────────────────────
   // SENHA
+  //
+  // Regra:
+  // - Reset pelo administrador operacional volta para 12345678.
+  // - Alterar senha fica disponível para tela futura de conta própria.
   // ─────────────────────────────────────────────────────────────
 
   Future<String> resetarSenha(int idUsuario) async {
@@ -136,13 +211,22 @@ class UsuarioRepository {
   // HELPERS
   // ─────────────────────────────────────────────────────────────
 
-  String? _normalizarSenha(String? senha) {
-    if (senha == null) return null;
-
-    final limpa = senha.trim();
-
-    if (limpa.isEmpty) return null;
-
-    return limpa;
+  List<UsuarioModel> _removerAdministradores(List<UsuarioModel> usuarios) {
+    return usuarios
+        .where((usuario) => !_isAdministrador(usuario.nomePerfil))
+        .toList();
   }
+
+  bool _isAdministrador(String? nomePerfil) {
+    return nomePerfil?.toLowerCase().trim() == 'administrador';
+  }
+}
+
+class UsuarioRepositoryException implements Exception {
+  final String message;
+
+  UsuarioRepositoryException(this.message);
+
+  @override
+  String toString() => message;
 }

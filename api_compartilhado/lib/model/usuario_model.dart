@@ -83,11 +83,54 @@ class UsuarioModel {
 
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
+
     final text = value.toString().trim();
+
     if (text.isEmpty) return null;
+
     return DateTime.tryParse(text);
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// PERFIL INTEGRADO AO MÓDULO USUÁRIO
+// Não haverá ficheiro perfil_model.dart separado.
+// Usado para carregar os perfis vindos de GET /api/perfis.
+// ─────────────────────────────────────────────────────────────
+
+class PerfilUsuarioModel {
+  final int idPerfil;
+  final String nomePerfil;
+
+  const PerfilUsuarioModel({
+    required this.idPerfil,
+    required this.nomePerfil,
+  });
+
+  factory PerfilUsuarioModel.fromJson(Map<String, dynamic> json) {
+    return PerfilUsuarioModel(
+      idPerfil: UsuarioModel._parseInt(json['idPerfil']) ?? 0,
+      nomePerfil: json['nomePerfil']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'idPerfil': idPerfil,
+      'nomePerfil': nomePerfil,
+    };
+  }
+
+  bool get isAdministrador {
+    return nomePerfil.toLowerCase().trim() == 'administrador';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// REQUEST PARA CRIAR/EDITAR USUÁRIO
+// A senha continua opcional porque o backend aplica a senha padrão.
+// No formulário, o campo senha não será exibido.
+// ─────────────────────────────────────────────────────────────
 
 class UsuarioRequestModel {
   final String nome;
@@ -111,6 +154,10 @@ class UsuarioRequestModel {
     };
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// LOGIN
+// ─────────────────────────────────────────────────────────────
 
 class LoginRequestModel {
   final String username;

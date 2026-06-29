@@ -3,8 +3,10 @@ package com.dev258.rota365.usuario.service;
 import com.dev258.rota365.usuario.dto.AlterarSenhaRequestDTO;
 import com.dev258.rota365.usuario.dto.LoginRequestDTO;
 import com.dev258.rota365.usuario.dto.LoginResponseDTO;
+import com.dev258.rota365.usuario.dto.PerfilResponseDTO;
 import com.dev258.rota365.usuario.dto.UsuarioRequestDTO;
 import com.dev258.rota365.usuario.dto.UsuarioResponseDTO;
+import com.dev258.rota365.usuario.dto.PerfilResponseDTO;
 import com.dev258.rota365.usuario.entity.Perfil;
 import com.dev258.rota365.usuario.entity.Usuario;
 import com.dev258.rota365.usuario.exception.CredenciaisInvalidasException;
@@ -36,17 +38,17 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listar(Boolean ativo) {
-        if (ativo == null) {
-            return usuarioRepository.findAllComPerfil()
-                    .stream()
-                    .map(UsuarioResponseDTO::new)
-                    .toList();
-        }
+   if (ativo == null) {
+    return usuarioRepository.findAllComPerfilSemAdministrador()
+            .stream()
+            .map(UsuarioResponseDTO::new)
+            .toList();
+}
 
-        return usuarioRepository.findByAtivoComPerfil(ativo)
-                .stream()
-                .map(UsuarioResponseDTO::new)
-                .toList();
+return usuarioRepository.findByAtivoComPerfilSemAdministrador(ativo)
+        .stream()
+        .map(UsuarioResponseDTO::new)
+        .toList();
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -57,6 +59,14 @@ public class UsuarioService {
 public UsuarioResponseDTO buscarPorId(Integer idUsuario) {
     Usuario usuario = buscarUsuarioOuLancar(idUsuario);
     return new UsuarioResponseDTO(usuario);
+}
+
+@Transactional(readOnly = true)
+public List<PerfilResponseDTO> listarPerfisOperacionais() {
+    return perfilRepository.findPerfisOperacionais()
+            .stream()
+            .map(PerfilResponseDTO::new)
+            .toList();
 }
     // ─────────────────────────────────────────────────────────────
     // CRIAÇÃO
