@@ -40,33 +40,41 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
     }
 
     Future.microtask(() async {
-      final provider = context.read<UsuarioProvider>();
+  final provider = context.read<UsuarioProvider>();
 
-      await provider.carregarPerfis();
+  await provider.carregarPerfis();
 
-      if (!mounted) return;
+  if (!mounted) return;
 
-      final perfis = provider.perfis;
+  final perfis = provider.perfis
+      .where(
+        (perfil) => perfil.nomePerfil.toLowerCase().trim() != 'Administrador',
+      )
+      .toList();
 
-      if (perfis.isEmpty) {
-        return;
-      }
-
-      final existePerfilSelecionado = perfis.any(
-        (perfil) => perfil.idPerfil == _idPerfilSelecionado,
-      );
-
-      if (_idPerfilSelecionado == null || !existePerfilSelecionado) {
-        setState(() {
-          _idPerfilSelecionado = perfis.first.idPerfil;
-          _carregouPerfis = true;
-        });
-      } else {
-        setState(() {
-          _carregouPerfis = true;
-        });
-      }
+  if (perfis.isEmpty) {
+    setState(() {
+      _idPerfilSelecionado = null;
+      _carregouPerfis = true;
     });
+    return;
+  }
+
+  final existePerfilSelecionado = perfis.any(
+    (perfil) => perfil.idPerfil == _idPerfilSelecionado,
+  );
+
+  if (_idPerfilSelecionado == null || !existePerfilSelecionado) {
+    setState(() {
+      _idPerfilSelecionado = perfis.first.idPerfil;
+      _carregouPerfis = true;
+    });
+  } else {
+    setState(() {
+      _carregouPerfis = true;
+    });
+  }
+});
   }
 
   @override
@@ -208,9 +216,11 @@ class _UsuarioFormScreenState extends State<UsuarioFormScreen> {
       ),
       body: Consumer<UsuarioProvider>(
         builder: (context, provider, _) {
-          final perfis = provider.perfis
-              .where((perfil) => !perfil.isAdministrador)
-              .toList();
+        final perfis = provider.perfis
+    .where(
+      (perfil) => perfil.nomePerfil.toLowerCase().trim() != 'administrador',
+    )
+    .toList();
 
           final perfilSelecionado = perfis
               .where((perfil) => perfil.idPerfil == _idPerfilSelecionado)

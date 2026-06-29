@@ -178,12 +178,12 @@ class _DetalhesUsuarioScreenState extends State<DetalhesUsuarioScreen> {
                       : () => _atualizarUsuario(usuario),
                   icon: const Icon(Icons.refresh_rounded),
                 ),
-              if (usuario != null)
-                IconButton(
-                  tooltip: 'Editar',
-                  onPressed: () => _abrirEdicao(usuario),
-                  icon: const Icon(Icons.edit_rounded),
-                ),
+              // if (usuario != null)
+              //   IconButton(
+              //     tooltip: 'Editar',
+              //     onPressed: () => _abrirEdicao(usuario),
+              //     icon: const Icon(Icons.edit_rounded),
+              //   ),
             ],
           ),
           body: _buildBody(context, provider, usuario),
@@ -579,15 +579,15 @@ class _AcoesUsuario extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: isLoading ? null : onEditar,
-            icon: const Icon(Icons.edit_rounded),
-            label: const Text('Editar usuário'),
-          ),
-        ),
-        const SizedBox(height: 10),
+        // SizedBox(
+        //   width: double.infinity,
+        //   child: FilledButton.icon(
+        //     onPressed: isLoading ? null : onEditar,
+        //     icon: const Icon(Icons.edit_rounded),
+        //     label: const Text('Editar usuário'),
+        //   ),
+        // ),
+        // const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
