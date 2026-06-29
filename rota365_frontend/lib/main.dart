@@ -1,7 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import 'package:api_compartilhado/api_compartilhado.dart';
+import 'app_imports.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,59 +30,17 @@ class Rota365App extends StatelessWidget {
         initialRoute: '/',
 
         routes: {
-          '/': (_) => const Rota365HomePlaceholder(),
+          '/': (_) => const UsuarioListScreen(),
+
+          '/usuarios': (_) => const UsuarioListScreen(),
+          '/usuarios/detalhes': (_) => const DetalhesUsuarioScreen(),
+
+          // Rota principal do formulário
+          '/usuarios/form': (_) => const UsuarioFormScreen(),
+
+          // Alias para não quebrar o botão que já criámos na lista
+          '/usuarios/novo': (_) => const UsuarioFormScreen(),
         },
-      ),
-    );
-  }
-}
-
-class Rota365HomePlaceholder extends StatelessWidget {
-  const Rota365HomePlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final usuarioProvider = context.watch<UsuarioProvider>();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rota365'),
-      ),
-      body: Center(
-        child: usuarioProvider.temUsuarioLogado
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Bem-vindo, ${usuarioProvider.usuarioLogado?.nome ?? ''}',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<UsuarioProvider>().logout();
-                    },
-                    child: const Text('Sair'),
-                  ),
-                ],
-              )
-            : ElevatedButton(
-                onPressed: usuarioProvider.isLoading
-                    ? null
-                    : () async {
-                        await context.read<UsuarioProvider>().login(
-                              username: 'admin',
-                              senha: '123456',
-                            );
-                      },
-                child: usuarioProvider.isLoading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Testar Login'),
-              ),
       ),
     );
   }

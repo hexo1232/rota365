@@ -24,7 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UsuarioService {
 
-    private static final String SENHA_PADRAO = "123456";
+    private static final String SENHA_PADRAO = "12345678";
 
     private final UsuarioRepository usuarioRepository;
     private final PerfilRepository perfilRepository;
